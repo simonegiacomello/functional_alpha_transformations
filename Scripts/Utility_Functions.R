@@ -1,0 +1,698 @@
+library(zoo)
+library(plotfunctions)
+library(tidyverse)
+library(lubridate)
+library(fda)
+library(purrr)
+#library(stringr)
+library(ggplot2)
+library(fda.usc)
+library(scales)
+library(cluster)
+library(transport)
+library(ggalt)
+library(ggthemes)
+library(fpc)
+library(tibble)
+library(viridis)
+library(geofd)
+#library(SoDA)
+library(readxl)
+library(geoR)
+library(sf)
+#library(rgdal)
+library(KSgeneral)
+library(ggpubr)
+library(factoextra)
+library(spdep)
+library(viridis)
+library(tmap)
+library(tmaptools)
+library(gridExtra)
+library(lattice)
+library(ggrepel)
+library(robCompositions)
+#library(atakrig)
+library(maptools)
+library(ggmap)
+library(Cairo)
+library(dplyr)
+library(MLmetrics)
+library(forecast)
+library(Microsoft365R)
+library(parallel)
+library(pbapply)
+library(doParallel)
+library(fields)
+library(compositions)
+library(splines)
+library(latex2exp)
+
+Rdata_path= function(name_str) 
+{
+  return(paste0("Output/Data/",name_str,".Rdata"))
+}
+
+Plot_path= function(name_str) 
+{
+  return(paste0("Output/Plot/",name_str))
+}
+
+
+
+Make_covid_plot = function (data,firstkeys,firstkeyvarname,years,classes, gender = "T", plotfunction = geom_smooth, args = NULL, point = T)
+{
+  temp_data = data %>% filter(get(firstkeyvarname) %in% firstkeys, CL_ETA %in% classes) %>% dplyr::select(any_of(c("partial_date_death","CL_ETA",firstkeyvarname,paste0(gender,"_",years))))%>%
+    pivot_longer(.,cols = paste0(gender,"_",years), names_to = "Year", values_to = "Deaths")
+  if (is.null(args))
+    plot = ggplot(temp_data,mapping = aes(x = partial_date_death, y = Deaths, color = Year)) + plotfunction() +facet_grid(CL_ETA~get(firstkeyvarname), scale = "free_y") 
+  else
+    plot = ggplot(temp_data,mapping = aes(x = partial_date_death, y = Deaths, color = Year)) + plotfunction(span = args) +facet_grid(CL_ETA~get(firstkeyvarname), scale = "free_y") 
+  if (point)
+    plot = plot + geom_point()
+  plot = plot + scale_x_date(date_labels = "%b")
+  return(plot)
+}
+
+aggregate_classes = function(data,keyname,firstvec,lastvec) #### BE VERY CAREFUL THAT THE VECTORS ARE COHERENT!
+{
+  n = length(firstvec)
+  newdata = data
+  for (i in 1:n){
+    first = firstvec[i]
+    last = lastvec[i]
+    classes = as.character(first:last)
+    newdata$CL_ETA[newdata$CL_ETA %in% classes] = paste0(first,"_",last)
+    newdata = newdata %>% group_by(get(keyname), partial_date_death, CL_ETA)%>%
+      summarise_at(c(paste0("M_",c(11:24)),paste0("F_",c(11:24)),paste0("T_",c(11:24))), sum) %>% ungroup()
+    names(newdata)[1] = keyname
+    print(paste0(i," out of ",n," aggregation completed"))
+  }
+  return(newdata)
+}
+
+# Smooth_data = function(data,areas,area_name,class,gender,splineorder,knots)
+# {
+#   to_ret = vector("list", length(areas))
+#   names(to_ret) = areas
+#   for (area in areas)
+#   { 
+#     temp_data = data %>% filter(CL_ETA == class, get(area_name) == area) %>% pivot_longer(.,cols = paste0(gender,"_",15:20), names_to = "Year", values_to = "Deaths")
+#     for (i in 15:20)
+#       temp_data$Year[temp_data$Year == paste0(gender,"_",i)] = paste0("20",i)
+#     year(temp_data$partial_date_death) = as.numeric(temp_data$Year)
+#     temp_data = drop_na(temp_data)
+#     temp_data = temp_data %>% filter(!(partial_date_death %in% seq(from =as.Date("2020-11-01"), to = as.Date("2020-12-31"), by = "day"))) %>% arrange(partial_date_death)
+#     basis = create.bspline.basis(rangeval = c(knots[1],knots[length(knots)]),breaks = knots,norder = splineorder)
+#     basismat = try(predict(basis, temp_data$partial_date_death), silent = T)
+#     if (dim(temp_data)[1] >= 1000){
+#       coef = try(solve(crossprod(basismat),
+#                    crossprod(basismat,temp_data$Deaths)),silent = T)
+#       if (class(coef) != "try-error")
+#         to_ret[[area]] = fd(coef,basis)
+#     }
+#   }
+#   return(to_ret[!sapply(to_ret,is.null)])
+# }
+
+# extract_functional_dataset = function(fda_list,start,end,spacing = 0.01,years){
+#   keys = names(fda_list)
+#   for(year in years){
+#     if (year == "2015")
+#       strt = as.Date(paste0(year,"-","01-10"))
+#     else
+#       strt = as.Date(paste0(year,"-",start))
+#     en =   as.Date(paste0(year,"-",end))
+#     argvals = seq(as.numeric(strt),as.numeric(en), by = spacing)
+#     temp = matrix(nrow = length(keys), ncol = length(argvals))
+#     for (i in 1:length(keys)){
+#       temp[i,] = as.vector(fdata(fda_list[[keys[i]]],argvals = argvals)$data)
+#     }
+#   }
+#   temp = fdata(temp, argvals = argvals)
+#   return(temp)
+# }
+
+convert_to_density = function(fdata)
+{
+  return(fdata/int.simpson(fdata))
+}
+
+clr = function(fdata)
+{
+  return(try(log(fdata) - 1/diff((fdata$rangeval)) * int.simpson(log(fdata))))
+}
+
+inv_clr = function(fdata)
+{return(exp(fdata)/int.simpson(exp(fdata)))}
+
+########### FUNCTIONAL TSAGRIS ALPHA TRANSFORMATION
+
+alpha.tsagris = function(fdata, alpha) {
+  
+  if (near(alpha,0)) {return(clr(fdata))}
+  
+  u.alpha = convert_to_density(fdata^alpha)
+  I = fdata$rangeval
+  
+  return(1/alpha * (u.alpha * diff(I) - 1))
+}
+
+alpha.tsagris.inv = function(fdata, alpha) {
+  
+  if (near(alpha,0)) {return(inv_clr(fdata))}
+  
+  w.alpha = (alpha * fdata + 1)^(1/alpha)
+  return(convert_to_density(w.alpha))
+}
+
+alpha.folding = function(fdata, alpha) {
+  
+  if (near(alpha,0)) {return(inv_clr(fdata))}
+  
+  fdata.mod = fdata
+  
+  for (i in 1:dim(fdata.mod$data)[1]) {
+    q.star = alpha * min(fdata.mod$data[i,])
+    if (q.star < -1) {
+      fdata.mod$data[i,] = fdata.mod$data[i,]/(q.star^2)
+      print("folding applied")
+    }
+  }
+  
+  return(alpha.tsagris.inv(fdata.mod, alpha))
+}
+
+########## FUNCTIONAL ISOMETRIC ALPHA TRANSFORMATION
+
+alpha.isometric = function(fdata, alpha) {
+  
+  if (near(alpha,0)) {return(clr(fdata))}
+  
+  I = fdata$rangeval
+  u.alpha = fdata
+  u.alpha = 1/alpha * (u.alpha^alpha - 1/diff(I) * int.simpson(u.alpha^alpha) )
+  return(u.alpha)
+}
+
+alpha.isometric.inv = function(fdata, alpha) {
+  
+  if (near(alpha,0)) {return(inv_clr(fdata))}
+  
+  fdata.mod = fdata
+  
+  for (i in 1:dim(fdata.mod$data)[1]) {
+    
+    q.star = min(fdata.mod$data[i,]) * alpha * diff(fdata.mod$rangeval)^alpha
+    if (q.star < -1) {
+      fdata.mod$data[i,] = fdata.mod$data[i,]/(q.star^2)
+      print("folding applied")
+    }
+  
+  }
+  
+  inf = -alpha * min(fdata.mod$data)
+  
+  Q = function(h) {
+    norm = int.simpson( (alpha*fdata.mod + h)^(1/alpha) ) ^ alpha
+    return( 1/2 * (1 - norm)^2 )
+  }
+  
+  Qg = nlminb(start=0, objective=Q, lower = inf)
+  par = Qg$par
+  obj = Qg$objective
+  
+  if (!near(obj, 0)) print(paste("Convergence reached for the minimum equal to:",obj))
+  
+  output = (alpha * fdata.mod + par)^(1/alpha)
+  return(output)
+  
+}
+
+alpha.isometric.inv.vec = function(x, y, alpha) {
+
+  lwr = - alpha * min(y)
+  upr = 1 - alpha * max(y)
+
+  z = y
+  q.star = min(y) * alpha * diff(range(x))^alpha
+  if (q.star < -1) {
+    z = y/(q.star^2)
+    print("folding applied")
+  }
+    
+
+  Q = function(h) {
+    norm = int.simpson2( x = x ,y = (alpha*z + h)^(1/alpha) ) ^ alpha
+    return( 1/2 * (1 - norm)^2 )
+  }
+
+  Qg = nlminb(start=lwr, objective=Q, lower = lwr, upper = upr)
+  par = Qg$par
+  obj = Qg$objective
+
+  if (!near(obj, 0)) print(paste0("Convergence reached for the minimum equal to:",obj))
+
+  output = (alpha * z + par)^(1/alpha)
+
+  return(output)
+
+}
+
+
+# shift_fdata_range = function(fdata,shift){
+#   return(fdata$rangeval - shift)
+# }
+# 
+# assemble_distance_fdata = function(fda_matrix,distance_function, p = 2)
+# {
+#   rows = dim(fda_matrix$data)[1]
+#   to_ret = matrix(nrow = rows, ncol = rows)
+#   for ( i in 1:(rows-1))
+#   {
+#     to_ret[i,i] = 0
+#     for ( j in (i+1):rows)
+#     {
+#       to_ret[i,j] = distance_function(fda_matrix$data[i,],fda_matrix$data[j,],p)
+#       to_ret[j,i] = to_ret[i,j]
+#     }
+#   }
+#   to_ret[rows,rows] = 0
+#   return(to_ret)
+# }
+
+# pam_multiple_distances = function(fdata_trans,distances_list,args_list,data_keys, distance_keys, ncl_vec, dataids)
+# {
+#   dists = length(distances_list)
+#   to_ret = data.frame(data_keys)
+#   names = "IDs"
+#   for ( i in 1:dists)
+#   { 
+#     data = fdata_trans[[dataids[i]]]
+#     dissimilarity = do.call(distances_list[[i]],args = c(list(data),args_list[[i]]))
+#     clusters = pam(dissimilarity, diss = T, k = ncl_vec[i])$clustering
+#     to_ret = cbind(to_ret,clusters)
+#     names = c(names,paste0(distance_keys[i],"_ncl_",ncl_vec[i]))
+#   }
+#   names(to_ret) = names
+#   return(to_ret)
+# }
+
+
+# Krige_predict_functional = function(traindata, coords_train, coords, krige)
+# {
+#   nlocs = dim(coords)[1]
+#   to_ret_data = matrix(nrow = nlocs, ncol = length(traindata$argvals))
+#   for ( i in 1:nlocs)
+#   {
+#     weigths = krweights(coords_train, coords[i,], krige)
+#     to_ret_data[i,] = colSums(traindata$data*weigths)
+#   }
+#   to_ret_data = fdata(to_ret_data,argvals = traindata$argvals)
+#   return(to_ret_data)
+# }
+#   
+  
+Distribution_Function = function(fdata_density, newargvals){
+  n = length(newargvals)
+  m = dim(fdata_density$data)[1]
+  to_ret_data = matrix(0, nrow = m, ncol = n)
+  for ( i in 2:n){
+    idx = which(fdata_density$argvals <=  newargvals[i])
+    avals = fdata_density$argvals[idx]
+    to_ret_data[,i] = int.simpson(fdata(fdata_density$data[,idx], argvals = avals))
+    
+  }
+  return(fdata(to_ret_data,newargvals))
+}
+
+# library(elliptic)
+# 
+# Kolm_density = function(vals)
+# {
+#   Fun = theta4(z = 0, q = exp(-2*vals^2)) 
+#   return(c(0,diff(Fun)/diff(vals)))
+# }
+
+
+factorization = function (age)
+{
+  if(age < 50)
+    return("0_10")
+  if(age < 70)
+    return("11_14")
+  return("15_21")
+}
+
+age_to_fact = Vectorize(factorization)
+
+
+conditioning = function(density, start, stop)
+{ 
+  index = which(density$argvals > start & density$argvals< stop)
+  args = density$argvals[index]
+  data = density$data[,index]
+  to_ret = fdata(data,args)
+  integral = int.simpson(to_ret)
+  return(to_ret/integral)
+}
+
+# myfclr = function(density,z,z_step)
+# {
+#   return(fcenLR(z,z_step,density))
+# }
+
+
+# center_cluster = function(fdata, clustering)
+# {
+#   clusters = unique(clustering)
+#   temp = fdata
+#   means = list()
+#   for ( c in clusters)
+#   {
+#     idx = which(clustering == c )
+#     means[[c]] = mean(temp[idx])
+#     for ( ind in idx)
+#       temp$data[ind,] = temp$data[ind,] - means[[c]]$data
+#   }
+#   return(list(fdata = temp, centers = means))
+# }
+#   
+# 
+# decenter_cluster = function(to_sum, clustering)
+# {
+#   clusters = unique(clustering)
+#   temp = to_sum$fdata
+#   for ( c in clusters)
+#   {
+#     idx = which(clustering == c )
+#     for ( ind in idx)
+#       temp$data[ind,] = temp$data[ind,] + to_sum$means[[c]]$data
+#   }
+#   return(temp)
+# }
+  
+# center_cluster_numeric = function(data, clustering)
+# {
+#   clusters = unique(clustering)
+#   temp = data
+#   means = list()
+#   for ( c in clusters)
+#   {
+#     idx = which(clustering == c )
+#     means[[c]] = mean(temp[idx])
+#     for ( ind in idx)
+#       temp$data[ind,] = temp$data[ind,] - means[[c]]$data
+#   }
+#   return(list(fdata = temp, centers = means))
+# }
+
+
+fdata_to_ggplot_df = function(fdatalist, names, years, year_labs)
+{ 
+  to_ret = NULL
+  names(year_labs) = years
+  for ( i in 1:length(years)){
+    year = years[i]
+    fdata = fdatalist[[year]]
+    n_functions = dim(fdata$data)[1]
+    avals = fdata$argvals
+    temp_df = data.frame(cbind(names),fdata$data)
+    names(temp_df) = c("name", paste0("val",1:length(fdata$argvals)))
+    temp_df = temp_df %>% pivot_longer(cols = paste0("val",1:length(fdata$argvals)), values_to = "dens", names_to = "dummy") %>% dplyr::select(name,dens) 
+    temp_df$x = rep(avals,n_functions)
+    temp_df$Year = rep(year_labs[i], length(fdata$argvals) * n_functions)
+    to_ret = rbind(to_ret, temp_df)
+  }
+  return(to_ret)
+}
+  
+  
+roll = function(aggrdate,ndays, freqs, dates)
+{
+  ret = list()
+  r = ndays %% aggrdate
+  rolledfreqs = rollapply(c(freqs, rep(0,aggrdate - r)), width = aggrdate,by = aggrdate, FUN = sum, align = "left")
+  if ( r == 0) rolledfreqs = rolledfreqs[-length(rolledfreqs)]
+  rolleddates = dates[seq(aggrdate/2,ndays, by = aggrdate)] + 0.5
+  if(length(rolleddates) != length(rolledfreqs)) rolleddates = c(rolleddates, dates[ndays])
+  ret$rolledfreqs = rolledfreqs
+  ret$rolleddates = rolleddates
+  return(ret)
+}
+
+discr_dens = function(dens, length){
+  ret = NULL
+  dates = dens$argvals[seq(1, length(dens$argvals), length.out = length+1)]
+  for ( i in 1:length)
+  { 
+    inds = dens$argvals >= dates[i] & dens$argvals <= dates[i+1]
+    tempdf = fdata(dens$data[,inds],argvals = dens$argvals[inds])
+    ret = cbind(ret,int.simpson(tempdf))
+  }
+  return(ret)
+}
+
+  
+dum_label = function(names) ## manage labels
+{
+  temp = rep("", length(names))
+  temp[which(names %in% c("Bergamo","Cremona","Lodi","Arezzo") )] = names[which(names %in% c("Bergamo","Cremona","Lodi","Arezzo") )]
+  return(temp)
+}
+
+
+######## smoothing without 0 imputation
+
+SmoothingSpline0 = function(knots,t,f,w,k,der,alfa,ch){
+  # inputs:  knots= knots of the spline
+  #         t = point of approximation,
+  #         f = values at t,
+  #         w = coefficients for weights,
+  #         k = order of spline, degree = k-1
+  #         der = derivation.
+  #         alfa = smoothing parameter
+  #         ch ={1,2};  ch=1: functional with (1-alfa) and alfa
+  #                     ch=2: functional with alfa
+
+  r = length(knots)
+
+  Length_all = 2*(k-1) + r
+  y = c()
+  for (i in 1:(Length_all)){
+    if (i <= k-1){y[i] = knots[1]}
+    if ((i > k-1) && (i <= r + k-1)){y[i] = knots[i-(k-1)]}
+    if (i > r+ k-1){y[i] = knots[r]}
+  }
+
+  # Collocation matrix K
+  K = splineDesign(y, t, k, outer.ok = TRUE)
+
+  # Diag matrix with weights
+  W = diag(w)
+
+  # Collocation matrix C
+  div = seq(min(y), max(y),   length = 1000)
+  lambda = c(0:(r-1))
+  g = lambda[length(lambda) - 1]
+  # Dimension(space of splines)
+  N = g+(k-1)+1
+  C = array(0, c(length(div),N))
+  l = c()
+  for(i in (1:N)){
+    for (j in 1:(k+1)){
+      l[j] = y[i+j-1]
+    }
+    C[ ,i] = splineDesign(l, div, k, outer.ok = TRUE)
+  }
+  # Verification of full column rank of collocation matrix K
+  if (length(t) <= N) stop ('length(t) must be higher then Dimension(space of splines)')
+  if (qr(K)$rank != N) stop ('Collocaton matrix does not have full column rank.')
+
+  # Matice S
+  S = array(0)
+  if (der == 0){
+    S = diag(1, c(N,N))
+  }
+  if (der > 0){
+    i=der
+    while (i>0){
+      D = array(0)
+      rozdil = y[(1+k):(N+k-i)] - y[(1+i):(N)]
+      D = (k-i)*diag(1/rozdil)
+      L = array(0, c(N-i,N-i+1))
+      for (j in (1:(N-i))){
+        L[j,j] = (-1)
+        L[j,j+1] = 1
+      }
+      if (i==der){
+        S = D%*%L
+      } else{
+        S = S%*%D%*%L
+      }
+      i=i-1
+    }
+  }
+
+  # Matrix M -  order of spline = k-der
+  kk = k-der
+
+  # Matrix M - augment knot sequence
+  celkova_delka = 2*(kk-1) + r
+  Y = c()
+  for (i in 1:celkova_delka){
+    if (i <= (kk-1)){Y[i] = knots[1]}
+    if ((i > kk-1) && (i <= r + kk-1)){Y[i] = knots[i-(kk-1)]}
+    if (i > (r+(kk-1))){Y[i] = knots[r]}
+  }
+
+  division = seq(min(Y), max(Y),  length = 10000)
+  Lambda = c(0:(r-1))
+  G = Lambda[length(Lambda) - 1]
+
+  # Matrix M - spline space dimension
+  NN = G+(kk-1)+1
+
+  # Matrix M - collocation matrix KK
+  CC = splineDesign(Y, division, kk, outer.ok=TRUE)
+  # Matrix M - function for computing integral
+  SLP=function(step, c){
+    integral = step*(0.5*c[1]+sum(c[2:(length(c)-1)]) +0.5*c[length(c)])
+    return (integral)
+  }
+
+  step=diff(division[1:2])
+
+  # Matrix M
+  M=array(0, c(NN,NN))
+  for (i in 1:NN){
+    for (j in 1:NN){
+      non_null = c()
+      product= CC[,i]*CC[,j]
+      for (m in 1:length(division)){
+        if (product[m] != 0) {non_null[m] = product[m]}
+      }
+      M[i,j]=SLP(step, product)
+    }
+  }
+
+  # Matrix D
+  differ = y[(1+k):(r+2*(k-1))] - y[(1:(r+k-2))]
+  D = (k)*diag(1/differ)
+
+  # Matrix K
+  KK = array(0, c(N,N-1))
+  KK[1,1]=1
+  KK[N,N-1]=-1
+
+  for (j in (2:(N-1))){
+    KK[j,j-1] = (-1)
+    KK[j,j] = 1
+  }
+  #KK
+
+  # Matrix U
+  U = S%*%D%*%KK
+
+  # Matrix G, vector g
+  if (ch==1){GG = t(U)%*%((1-alfa)*M)%*%U + alfa * t(KK)%*%t(D)%*%t(K)%*%W%*%K%*%D%*%KK}
+  if (ch==2){GG = t(U)%*%M%*%U +            alfa * t(KK)%*%t(D)%*%t(K)%*%W%*%K%*%D%*%KK}
+
+  gg = alfa*t(KK)%*%t(D)%*%t(K)%*%W%*%f
+
+  # vector of B-spline coefficients := z
+  z = solve(GG)%*%gg
+
+  # B-spline basis in L20
+  Bbasis = C%*%D%*%KK
+  #matplot(deleni,Bbasis, type="l",lty=1,las=1, xlab="t", col = rainbow(dim(Bbasis)[2]))
+  #abline(v=knots, col="gray",lty=2)
+
+  # Resulting spline
+  spline0 = (C%*%D%*%KK)%*%z
+
+  #original
+  # matplot(div,spline0, type="l",las=1,xlab=expression (paste("log of particle size (",mu,"m)")),ylab="",col="darkblue",lwd=2,
+  #         ylim = c(min(c(min(f),min(spline0))),max(c(max(f),max(spline0)))),
+  #         main = paste("Spline of order k =",k))
+  # matpoints(t,f, pch = 8)
+  # abline(h=0,col="red",lty=2,lwd=1)
+
+  #log of x-axis
+  #matplot(exp(div),spline0, type="l",log="x",las=1,ylab="clr density",col="darkblue",lwd=3,
+  #        ylim = c(min(c(min(f),min(spline0))),max(c(max(f),max(spline0)))),
+  #        main = paste("Spline of order k =",k),xlab = expression (paste("Particle size (",mu,"m)")))
+  #matpoints(exp(t),f, pch = 8)
+  #abline(h=0,col="red",lty=2,lwd=1)
+
+  integral = SLP(step,spline0)
+
+  if (ch==1) {J = (1-alfa)*t(z)%*%t(U)%*%M%*%U%*%z + alfa*t(f-K%*%D%*%KK%*%z)%*%W%*%(f-K%*%D%*%KK%*%z)}
+  if (ch==2) {J =          t(z)%*%t(U)%*%M%*%U%*%z + alfa*t(f-K%*%D%*%KK%*%z)%*%W%*%(f-K%*%D%*%KK%*%z)}
+  return(list(J=J,z=z,spline0=spline0))
+}
+
+#Zero-integral basis
+ZsplineBasis = function(knots,k,npoints)
+{
+  r = length(knots)
+  lambda_index = c(0:(r-1))
+  g = lambda_index[length(lambda_index) - 1]
+
+  N = g+(k-1)+1
+
+  lambda = c(rep(min(knots),k-1),knots,rep(max(knots),k-1))
+  div = seq(min(lambda), max(lambda), length = npoints)
+
+  # standard B-spline basis; collocation matrix := C
+  splajn.basis = create.bspline.basis(range(knots),nbasis = N , norder = k, breaks = knots)
+  C = eval.basis(div, splajn.basis)
+
+  # Matrix D
+  differ = lambda[(1+k):(r+2*(k-1))] - lambda[(1:(r+k-2))]
+  D = (k)*diag(1/differ)
+
+  # Matrix L
+  L = array(0, c(N,N-1))
+  L[1,1]=1
+  L[N,N-1]=-1
+
+  for (j in (2:(N-1))){
+    L[j,j-1] = (-1)
+    L[j,j] = 1
+  }
+
+  # Spline0 basis: collocation matrix C0
+  C0 = C%*%D%*%L
+
+  # Matrix M - function for computing integral
+  SLP=function(step, c){
+    integral = step*(0.5*c[1]+sum(c[2:(length(c)-1)]) +0.5*c[length(c)])
+    return (integral)
+  }
+
+  division = seq(min(lambda), max(lambda),  length = 10000);step=diff(div[1:2])
+  CC = eval.basis(division, splajn.basis)
+
+  CC0 = CC%*%D%*%L
+
+  M=array(0, c(N-1,N-1))
+  for (i in 1:(N-1)){
+    for (j in 1:(N-1)){
+      non_null = c()
+      product = CC0[,i]*CC0[,j]
+      for (m in 1:length(div)){
+        if (product[m] != 0) {non_null[m] = product[m]}
+      }
+      M[i,j]=SLP(step, product)
+    }
+  }
+  return(list(C0 = C0, M0 = M, K = L, D = D))
+}
+
+
+
+
+
+  
+  
