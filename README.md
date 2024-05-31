@@ -9,7 +9,7 @@ The Bayes space has been introduced as the extension of the Aitchison simplex in
 The primary goal of this work is to introduce the functional version of the $\alpha$-transformations as a generalization of the theory develeped in the multivariate framework. A case study is presented in order to test the transformations against the log-ratio approach both in functional regression and in time-series forecasting.
 
 ## Author
-Simone Giacomello 
+Simone Giacomello      simone.giacomello@mail.polimi.it
 
 MSc Thesis. Mathematical Engineering - Statistical Learning @Politecnico di Milano. Academic year 2023/2024
 
