@@ -16,7 +16,7 @@ MSc Thesis. Mathematical Engineering - Statistical Learning @Politecnico di Mila
 Advisor: Prof.ssa Alessandra Menafoglio
 
 ## Code 
-In this repository you can find the \verb{R} scripts that produced the analysis. The complete set of data can be found at https://polimi365-my.sharepoint.com/:f:/g/personal/10620752_polimi_it/ElGqmXWeVb9Eml8nekSPr1oBLD-81l-YEt4uDgvcbqCWcQ?e=mEUXGi
+In this repository you can find the R scripts that produced the analysis. The complete set of data can be found at https://polimi365-my.sharepoint.com/:f:/g/personal/10620752_polimi_it/ElGqmXWeVb9Eml8nekSPr1oBLD-81l-YEt4uDgvcbqCWcQ?e=mEUXGi
 
 ## References
 Riccardo Scimone, Alessandra Menafoglio, Laura M. Sangalli, and Piercesare Secchi. A look at the spatio-
