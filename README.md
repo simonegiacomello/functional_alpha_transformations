@@ -1,4 +1,4 @@
-# Functional $\alpha$-transformations for the statistical analysis of density functions: comparison with the log-ratio approach.
+# Functional $\alpha$-transformations for the statistical analysis of density functions
 
 ## Abstract
 The well established Aitchison geometry and the log-ratio approach are considered to be the baseline theory to deal with Compositional Data. 
