@@ -59,7 +59,7 @@ v = mean(variance$v)
 
 g = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale +   geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = meandens,color = Year), color = "black",size = 1.4)+
   #scale_x_datetime(labels = time_format("%b"),limits = lims) + 
-  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) + ggtitle(paste("Mean variance of the curves:",v))
+  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) #+ ggtitle(paste("Mean variance of the curves:",v))
 #x11()
 pdf(paste0("Output/Plot/",folder_names[[class]],"/Res_regr_Tsagris_24.pdf"), width = 20, height = 10)
 
@@ -93,7 +93,7 @@ v = mean(variance$v)
 
 g = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale +   geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = meandens,color = Year), color = "black",size = 1.4)+
   #scale_x_datetime(labels = time_format("%b"),limits = lims) + 
-  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) + ggtitle(paste("Mean variance of the curves:",v))
+  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) #+ ggtitle(paste("Mean variance of the curves:",v))
 #x11()
 pdf(paste0("Output/Plot/",folder_names[[class]],"/Res_regr_clr_24.pdf"), width = 20, height = 10)
 
@@ -150,7 +150,7 @@ v = mean(variance$v)
 
 g = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale +   geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = meandens,color = Year), color = "black",size = 1.4)+
   #scale_x_datetime(labels = time_format("%b"),limits = lims) + 
-  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) + ggtitle(paste("Mean variance of the curves:",v))
+  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) #+ ggtitle(paste("Mean variance of the curves:",v))
 #x11()
 pdf(paste0("Output/Plot/",folder_names[[class]],"/Res_regr_Isometric_24.pdf"), width = 20, height = 10)
 
