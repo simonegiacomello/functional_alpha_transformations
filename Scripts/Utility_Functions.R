@@ -47,6 +47,7 @@ library(fields)
 library(compositions)
 library(splines)
 library(latex2exp)
+library(patchwork)
 
 Rdata_path= function(name_str) 
 {

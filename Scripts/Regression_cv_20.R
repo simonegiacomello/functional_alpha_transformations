@@ -111,7 +111,16 @@ meape_best_isom = model.isometric$MedAPE
 save(meape_best_isom, r_squared_best_isom, regr_models_provinces_best_isom, predictions_province_best_isom, errors_province_best_isom, alpha.best_isom, file = Rdata_path("Regression_Province_best_alpha_isometric"))
 
 
-####PLOTS
+######## PLOTS
+
+rm(list=ls())
+load("Output/Data/Regression_Province_clr.Rdata")
+load("Output/Data/Regression_Province_best_alpha.Rdata")
+load("Output/Data/Regression_Province_best_alpha_isometric.Rdata")
+load("Output/Data/Smoothing_Provinces_52_alpha.Rdata")
+source("Scripts/Utility_Functions.R")
+
+to_average = 4
 
 comparison = data.frame(
   Year = rep(years_names[(to_average+2):length(years)], each = 3), 
@@ -119,28 +128,13 @@ comparison = data.frame(
   R2 = NA 
 )
 
+##R2 comparison table
 comparison[comparison$Transformation == "CLR",3] = unlist(r_squared_clr)
 comparison[comparison$Transformation == "Tsagris",3] = unlist(r_squared_best)
 comparison[comparison$Transformation == "Isometric",3] = unlist(r_squared_best_isom)
 
-ggplot(comparison, aes(x = Year, y = R2, color = Transformation, group = Transformation)) +
-  geom_line(size = 1) +
-  geom_point(size = 2) +  # Add points to highlight data points
-  labs(x = "Year", y = "Value", 
-       title = TeX(paste0("$R^2$ indicator over the years. Tsagris $\\alpha = ",alpha.best,"$, Isometric $\\alpha = ",alpha.best_isom,"$"))) +
-  theme_minimal() +
-  scale_color_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red")) +
-  theme(legend.position = "bottom")
 
-
-
-
-
-comparison = data.frame(
-  Year = rep(years_names[(to_average+2):length(years)], each = 3 * 107), 
-  Transformation = rep(c("CLR","Tsagris","Isometric"), times = length((to_average+2):length(years)), each=107),
-  KLdiv = NA 
-)
+####### Density comparison plots for KLdiv and MedAPE
 
 constant_density = fdata(rep(1/diff(clist_province[["0"]][["T_11"]]$rangeval), 
                              length(clist_province[["0"]][["T_11"]]$argvals)),
@@ -153,37 +147,111 @@ KL_div = function(errors, baseline_density, transformation, alpha = 0) {
   if (transformation == "Tsagris") errors_density = alpha.folding(errors, alpha)
   if (transformation == "Isometric") errors_density = alpha.isometric.inv(errors, alpha)
   
-  return( int.simpson(baseline_density * log(baseline_density/errors_density)))
+  return( int.simpson(errors_density * log(errors_density/baseline_density)))
   
 }
 
+years_plot = c("T_16", "T_18","T_20")
+years_plot_name = c("2016", "2018","2020")
+comparison = data.frame(Year = rep(years_plot_name, each = 3*107),
+                        Transformation = rep(c("CLR","$A_{0.85}$","$A_{1-IT}$"), times = 3, each=107),
+                        KLdiv = NA)
+
 for (i in (to_average+2):length(years)) {
+  
   year = years_names[i]
   name = years[i]
   
-  comparison[comparison$Transformation == "CLR" & comparison$Year == year,3] = 
-    KL_div(errors_province_clr[[name]], constant_density, "CLR")
+  if (name %in% years_plot) {
+    
+    comparison[comparison$Transformation == "CLR" & comparison$Year == year,3] = 
+      KL_div(errors_province_clr[[name]], constant_density, "CLR")
+    
+    comparison[comparison$Transformation == "$A_{0.85}$" & comparison$Year == year,3] =    
+      KL_div(errors_province_best[[name]], constant_density, "Tsagris", alpha.best)
   
-  comparison[comparison$Transformation == "Tsagris" & comparison$Year == year,3] =    
-    KL_div(errors_province_best[[name]], constant_density, "Tsagris", alpha.best)
-
-  comparison[comparison$Transformation == "Isometric" & comparison$Year == year,3] = 
-    KL_div(errors_province_best_isom[[name]], constant_density, "Isometric", alpha.best_isom)
+    comparison[comparison$Transformation == "$A_{1-IT}$" & comparison$Year == year,3] = 
+      KL_div(errors_province_best_isom[[name]], constant_density, "Isometric", alpha.best_isom)
+    
+  }
 }
 
+g1 = ggplot(comparison %>% filter(Year == "2016"), aes(KLdiv, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                    labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("KL divergence") + ylab("") + ggtitle("2016") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank()) 
+  
+g2 = ggplot(comparison %>% filter(Year == "2018"), aes(KLdiv, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("KL divergence") + ylab("") + ggtitle("2018") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
 
-ggplot(comparison, aes(x = as.factor(Year), y = KLdiv, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  geom_vline(xintercept = seq(1.5, length(unique(comparison$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "Value", 
-         title = TeX(paste0("KL-divergence indicator over the years. Tsagris $\\alpha = ",alpha.best,"$, Isometric $\\alpha = ",alpha.best_isom,"$"))) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  ylim(c(0,0.15)) +
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
+g3 = ggplot(comparison %>% filter(Year == "2020"), aes(KLdiv, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("KL divergence") + ylab("") + ggtitle("2020") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+kldiv = (g1 + g2 + g3) + plot_layout(ncol = 3, guides = 'collect') 
 
 
-################# confronto medape su stessa scala
+comparison = data.frame(
+  Year = rep(years_names[(to_average+2):length(years)], each = 3 * 107), 
+  Transformation = rep(c("CLR","$A_{0.85}$","$A_{1-IT}$"), times = length((to_average+2):length(years)), each=107),
+  MedAPE = NA 
+)
+
+comparison[comparison$Transformation == "CLR",3] = unlist(meape_clr)
+comparison[comparison$Transformation == "$A_{0.85}$",3] = unlist(meape_best)
+comparison[comparison$Transformation == "$A_{1-IT}$",3] = unlist(meape_best_isom)
+
+comparison = comparison %>% filter(Year %in% years_plot_name)
+
+q1 = ggplot(comparison %>% filter(Year == "2016"), aes(MedAPE, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("MedAPE") + ylab("") + ggtitle("2016") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+q2 = ggplot(comparison %>% filter(Year == "2018"), aes(MedAPE, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("MedAPE") + ylab("") + ggtitle("2018") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+
+q3 = ggplot(comparison %>% filter(Year == "2020"), aes(MedAPE, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("MedAPE") + ylab("") + ggtitle("2020") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+
+medape = (q1 + q2 + q3) + plot_layout(ncol = 3, guides = 'collect') 
+ 
+dev.new(width=15, height=7)
+kldiv / (medape & theme(legend.position = "bottom", legend.text = element_text(size = 18), legend.title = element_blank()))
+
+
+
+
+
+
+################# Confronto MedAPE su stessa scala
 
 load("Output/Data/Smoothing_Provinces_52_alpha.Rdata")
 clist_province_tsag = clist_province
@@ -286,28 +354,6 @@ ggplot(comparison, aes(x = as.factor(Year), y = MedAPE, fill = Transformation)) 
 
 
 
-##plot per 2020
-
-
-comparison = data.frame(
-  Year = rep(years_names[(to_average+2):length(years)], each = 3 * 107), 
-  Transformation = rep(c("CLR","Tsagris","Isometric"), times = length((to_average+2):length(years)), each=107),
-  MedAPE = NA 
-)
-
-comparison[comparison$Transformation == "CLR",3] = unlist(meape_clr)
-comparison[comparison$Transformation == "Tsagris",3] = unlist(meape_best)
-comparison[comparison$Transformation == "Isometric",3] = unlist(meape_best_isom)
-
-ggplot(comparison, aes(x = as.factor(Year), y = MedAPE, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  geom_vline(xintercept = seq(1.5, length(unique(comparison$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "Value", 
-       title = TeX(paste0("MedAPE indicator over the years. Tsagris $\\alpha = ",alpha.best,"$, Isometric $\\alpha = ",alpha.best_isom,"$"))) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  ylim(c(0,5))+
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
 
 
 

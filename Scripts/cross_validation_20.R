@@ -254,9 +254,9 @@ dev.new(width=10, height=5)
 ggplot(temp, aes(x = as.factor(Year), y = Value, fill = Transformation)) +
   geom_boxplot(position = position_dodge(width = 0.75), outlier.shape = NA) +  # Align the boxplots
   geom_vline(xintercept = seq(1.5, length(unique(temp$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "KL-divergence") +
+  labs(x = "Year", y = "KL divergence") +
   theme_minimal() +
-  theme(legend.position = "bottom", legend.text = element_text(size = 14)) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 15), legend.title = element_blank()) +
   scale_fill_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                     labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$")))
 
