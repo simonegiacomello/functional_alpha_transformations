@@ -73,37 +73,20 @@ load("Output/Data/Smoothing_Provinces_8_alpha_isometric_24.Rdata")
 
 isometric_performance = models.predictions(alpha.best_isom, "Isometric")
 
+save(clr_performance, tsagris_performance, isometric_performance, file = Rdata_path("Predictive_performance_24"))
 
-############################  comparison between CLR, Tsagris and Isometric
+######## PLOTS
 
-comparison = data.frame(Year = rep("2024", each=107), 
-                        Transformation = rep(c("CLR", "Tsagris","Isometric"), each=107),
-                        MedAPE = NA)
-
-comparison[comparison$Transformation == "CLR",3] = clr_performance$MedAPE
-comparison[comparison$Transformation == "Tsagris",3] = tsagris_performance$MedAPE
-comparison[comparison$Transformation == "Isometric",3] = isometric_performance$MedAPE
+rm(list=ls())
+load("Output/Data/Predictive_performance_24.Rdata")
+source("Scripts/Utility_Functions.R")
 
 
-ggplot(comparison, aes(x = as.factor(Year), y = MedAPE, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  labs(x = "Year", y = "Value", title = 
-         TeX(paste0("MedAPE comparison. Tsagris $\\alpha = 0.85$, Isometric $\\alpha = 1$"))) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))+
-  ylim(c(0.5,6))
+####### Density comparison plots for KLdiv and MedAPE
 
-
-comparison = data.frame(
-  Year = rep("2024", each=107), 
-  Transformation = rep(c("CLR", "Tsagris","Isometric"), each=107),
-  Kldiv = NA)
-
-
-constant_density = fdata(rep(1/diff(clist_province[["0"]][["T_24"]]$rangeval), 
-                             length(clist_province[["0"]][["T_24"]]$argvals)),
-                         clist_province[["0"]][["T_24"]]$argvals)
+constant_density = fdata(rep(1/diff(clr_performance$predictions$rangeval), 
+                             length(clr_performance$predictions$argvals)),
+                         clr_performance$predictions$argvals)
 
 KL_div = function(errors, baseline_density, transformation, alpha = 0) {
   errors_density = NULL
@@ -116,29 +99,51 @@ KL_div = function(errors, baseline_density, transformation, alpha = 0) {
   
 }
 
+years_plot = "T_24"
+years_plot_name = "2024"
+comparison = data.frame(Year = rep(years_plot_name, each = 107),
+                        Transformation = rep(c("CLR","$A_{0.85}$","$A_{1-IT}$"), each=107),
+                        KLdiv = NA, 
+                        MedAPE = NA)
 
-comparison[comparison$Transformation == "CLR",3] = 
+alpha.best = 0.85
+alpha.best_isom = 1
+
+comparison[comparison$Transformation == "CLR" & comparison$Year == years_plot_name,3] = 
   KL_div(clr_performance$errors, constant_density, "CLR")
 
-comparison[comparison$Transformation == "Tsagris",3] =    
+comparison[comparison$Transformation == "$A_{0.85}$" & comparison$Year == years_plot_name,3] =    
   KL_div(tsagris_performance$errors, constant_density, "Tsagris", alpha.best)
 
-comparison[comparison$Transformation == "Isometric",3] = 
+comparison[comparison$Transformation == "$A_{1-IT}$" & comparison$Year == years_plot_name,3] = 
   KL_div(isometric_performance$errors, constant_density, "Isometric", alpha.best_isom)
 
 
-
-ggplot(comparison, aes(x = as.factor(Year), y = Kldiv, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(xintercept = seq(1.5, length(unique(comparison$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "Value", title = 
-         TeX(paste0("KL-divergence comparison. Tsagris $\\alpha = 0.85$, Isometric $\\alpha = 1$"))) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  # ylim(c(0,0.15)) +
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
+g1 =ggplot(comparison, aes(x = as.factor(Year), y = KLdiv, fill = Transformation)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape = NA) +  # Align the boxplots
+  labs(x = "", y = "KL divergence") +
+  scale_fill_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                    labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$")))  +
+  theme_minimal() + ylim(c(0,0.06)) + 
+  theme(legend.position = "none") 
 
 
+comparison[comparison$Transformation == "CLR",4] = clr_performance$MedAPE
+comparison[comparison$Transformation == "$A_{0.85}$",4] = tsagris_performance$MedAPE
+comparison[comparison$Transformation == "$A_{1-IT}$",4] = isometric_performance$MedAPE
 
-save(clr_performance, tsagris_performance, isometric_performance, file = Rdata_path("Predictive_performance_24"))
+q1 =  ggplot(comparison, aes(x = as.factor(Year), y = MedAPE, fill = Transformation)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape = NA) +  # Align the boxplots
+  labs(x = "", y = "MedAPE") +
+  scale_fill_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                    labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  theme_minimal() + ylim(c(0,5)) + 
+  theme(legend.position = "none") 
+
+dev.new(width=15, height=7)
+(g1 + q1 ) + plot_layout( guides = 'collect') & theme(legend.position = "bottom", legend.text = element_text(size = 20), legend.title = element_blank())
+
+
+
+  
 
