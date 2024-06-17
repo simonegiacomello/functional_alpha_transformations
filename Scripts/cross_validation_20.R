@@ -17,7 +17,7 @@ class = classe[3]
 
 models.fitting = function(alpha, train.indexes, test.indexes) {
   idx = paste(alpha,"", sep="")
-
+  
   regr_models_provinces = r.sq = meape =  list()
   
   #fit the models
@@ -46,7 +46,7 @@ models.fitting = function(alpha, train.indexes, test.indexes) {
     
     #compute the r.squared coefficient for each year 
     test.set = clist_province[[idx]][[year]]$data[test.indexes,]
-
+    
     r.sq[[year]] = 1 - mean(int.simpson(model$residuals$data^2))/mean(int.simpson((model$y$data - mean(model$y$data))^2))
     regr_models_provinces[[year]]$test.set = test.set
     regr_models_provinces[[year]]$test.regressor = test.regressor
@@ -75,13 +75,13 @@ cross.validation.indicators = function(nfolds=5, alpha, seed=2024, transformatio
     train.indexes = (1:107)[-test.indexes]
     
     models.fitting(alpha, train.indexes, test.indexes)
-
+    
   }  -> cv.models
   
   for (y in names(cv.models[[1]]$R2)) {
     
     r.squared[[y]] = meape[[y]] = errors_divergence[[y]] = numeric(nfolds)
-
+    
     for (k in 1:nfolds) {
       r.squared[[y]][[k]] = cv.models[[k]]$R2[[y]]
       model = cv.models[[k]]$models[[y]]$model
@@ -101,7 +101,7 @@ cross.validation.indicators = function(nfolds=5, alpha, seed=2024, transformatio
   }
   
   return(list(R2 = r.squared, MedAPE = meape, KLdiv = errors_divergence))
-    
+  
 }
 
 
@@ -110,8 +110,8 @@ cross.validation.indicators = function(nfolds=5, alpha, seed=2024, transformatio
 load("Output/Data/Smoothing_Provinces_52_alpha.Rdata")
 
 constant_density = fdata(rep(1/diff(clist_province[["0"]][["T_11"]]$rangeval), 
-                       length(clist_province[["0"]][["T_11"]]$argvals)),
-                       clist_province[["0"]][["T_11"]]$argvals)
+                             length(clist_province[["0"]][["T_11"]]$argvals)),
+                         clist_province[["0"]][["T_11"]]$argvals)
 
 nfolds = 5
 indicators_data = list()
@@ -235,7 +235,7 @@ names(kl_div) = alpha.seq
 idx.best_isom = names(kl_div)[which.min(kl_div)]  #1
 
 
-############################  comparison between CLR, Tsagris and Isometric
+############################  comparison between CLR, Tsagris and Isometric in CV performance
 
 rm(list=ls())
 load("Output/Data/Indicators_cv_Tsagris_20.Rdata")
@@ -245,45 +245,18 @@ comparison = rbind(indicators_data[["0"]],
                    indicators_data[["0.85"]], 
                    indicators_data_isom[["1"]])
 comparison$Alpha = c(rep(0,75),rep(0.85,75),rep(1,75))
-comparison$Transformation = c(rep("CLR",75), rep("Tsagris",75), rep("Isometric",75) )
-
-
-temp = comparison[comparison$Indicator == "R^2",]
-temp$Transformation = as.factor(temp$Transformation)
-
-ggplot(temp, aes(x = as.factor(Year), y = Value, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  geom_vline(xintercept = seq(1.5, length(unique(temp$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "Value", title = 
-         TeX(paste0("$R^2$ comparison. Tsagris $\\alpha = 0.85$, Isometric $\\alpha = 1$"))) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
-
-
-temp = comparison[comparison$Indicator == "MedAPE",]
-temp$Transformation = as.factor(temp$Transformation)
-
-ggplot(temp, aes(x = as.factor(Year), y = Value, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  geom_vline(xintercept = seq(1.5, length(unique(temp$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "Value", title = 
-         TeX(paste0("MedAPE comparison. Tsagris $\\alpha = 0.85$, Isometric $\\alpha = 1$"))) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
-
+comparison$Transformation = c(rep("CLR",75), rep("$A_{0.85}$",75), rep("$A_{1-IT}$",75) )
 
 temp = comparison[comparison$Indicator == "KL-divergence",]
 temp$Transformation = as.factor(temp$Transformation)
 
+dev.new(width=10, height=5)
 ggplot(temp, aes(x = as.factor(Year), y = Value, fill = Transformation)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape = NA) +  # Align the boxplots
   geom_vline(xintercept = seq(1.5, length(unique(temp$Year)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(x = "Year", y = "Value", title = 
-         TeX(paste0("KL-divergence comparison. Tsagris $\\alpha = 0.85$, Isometric $\\alpha = 1$"))) +
+  labs(x = "Year", y = "KL-divergence") +
   theme_minimal() +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
-
+  theme(legend.position = "bottom", legend.text = element_text(size = 14)) +
+  scale_fill_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                    labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$")))
 
