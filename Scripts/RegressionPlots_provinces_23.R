@@ -15,7 +15,7 @@ names(class_labs) =  classe
 names(year_labs) = years
 folder_names = c("0-49","50-69","70+")
 names(folder_names) = classe
-years_to_plot = years[10:13]
+years_to_plot = years[11:13]
 
 class = "15_21"
 
@@ -32,10 +32,10 @@ for(year in years_to_plot) {
 
 
 #plot for the alpha-Tsagris residuals
-plot_provs_a = fdata_to_ggplot_df(fdatalist = temp_res,names = provinces_names, years = years_to_plot, year_labs = year_labs[10:13] )
+plot_provs_a = fdata_to_ggplot_df(fdatalist = temp_res,names = provinces_names, years = years_to_plot, year_labs = year_labs[11:13] )
 colors = rep("gray",107)
 plot_provs_a$name = factor(plot_provs_a$name, levels = c(setdiff(plot_provs_a$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
-plot_provs_alpha = fdata_to_ggplot_df(fdatalist = errors_province_best,names = provinces_names, years = years_to_plot, year_labs = year_labs[10:13] )
+plot_provs_alpha = fdata_to_ggplot_df(fdatalist = errors_province_best,names = provinces_names, years = years_to_plot, year_labs = year_labs[11:13] )
 plot_provs_alpha$name = factor(plot_provs_a$name, levels = c(setdiff(plot_provs_a$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
 provinces_data_t = provinces_data %>% filter(CL_ETA == class)
 provinces_data_t = provinces_data_t %>% mutate(weight = num_residenti/sum(provinces_data$num_residenti)) %>% dplyr::select(Provincia, weight)
@@ -54,7 +54,7 @@ variance = plot_provs_a %>% group_by(name) %>% summarise(v = var(dens))
 v = mean(variance$v)
 
 g = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale  +  ylim(0,0.02) +   geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = meandens,color = Year), color = "black",size = 1.4)+
-  scale_x_datetime(labels = time_format("%b"),limits = lims) + facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) + ggtitle(paste("Mean variance of the curves:",v))
+  scale_x_datetime(labels = time_format("%b"),limits = lims) + facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) #+ ggtitle(paste("Mean variance of the curves:",v))
 #x11()
 pdf(paste0("Output/Plot/",folder_names[[class]],"/Res_regr_Tsagris_23.pdf"), width = 20, height = 10)
 
@@ -64,10 +64,10 @@ dev.off()
 
 
 #plot for the clr residuals
-plot_provs_c = fdata_to_ggplot_df(fdatalist = temp_res_clr,names = provinces_names, years = years_to_plot, year_labs = year_labs[10:13] )
+plot_provs_c = fdata_to_ggplot_df(fdatalist = temp_res_clr,names = provinces_names, years = years_to_plot, year_labs = year_labs[11:13] )
 colors = rep("gray",107)
 plot_provs_c$name = factor(plot_provs_c$name, levels = c(setdiff(plot_provs_c$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
-plot_provs_clr = fdata_to_ggplot_df(fdatalist = errors_province_clr,names = provinces_names, years = years_to_plot, year_labs = year_labs[10:13] )
+plot_provs_clr = fdata_to_ggplot_df(fdatalist = errors_province_clr,names = provinces_names, years = years_to_plot, year_labs = year_labs[11:13] )
 plot_provs_clr$name = factor(plot_provs_c$name, levels = c(setdiff(plot_provs_c$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
 provinces_data_t = provinces_data %>% filter(CL_ETA == class)
 provinces_data_t = provinces_data_t %>% mutate(weight = num_residenti/sum(provinces_data$num_residenti)) %>% dplyr::select(Provincia, weight)
@@ -86,7 +86,7 @@ variance = plot_provs_c %>% group_by(name) %>% summarise(v = var(dens))
 v = mean(variance$v) 
 
 g = ggplot(plot_provs_c, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale  +  ylim(0,0.02) +   geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = meandens,color = Year), color = "black",size = 1.4)+
-  scale_x_datetime(labels = time_format("%b"),limits = lims) + facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) + ggtitle(paste("Mean variance of the curves:",v))
+  scale_x_datetime(labels = time_format("%b"),limits = lims) + facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) #+ ggtitle(paste("Mean variance of the curves:",v))
 #x11()
 pdf(paste0("Output/Plot/",folder_names[[class]],"/Res_regr_clr_23.pdf"), width = 20, height = 10)
 
@@ -95,10 +95,10 @@ dev.off()
 
 
 #plot for the alpha-Isometric residuals
-plot_provs_a = fdata_to_ggplot_df(fdatalist = temp_res_isom,names = provinces_names, years = years_to_plot, year_labs = year_labs[10:13] )
+plot_provs_a = fdata_to_ggplot_df(fdatalist = temp_res_isom,names = provinces_names, years = years_to_plot, year_labs = year_labs[11:13] )
 colors = rep("gray",107)
 plot_provs_a$name = factor(plot_provs_a$name, levels = c(setdiff(plot_provs_a$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
-plot_provs_alpha = fdata_to_ggplot_df(fdatalist = errors_province_best_isom,names = provinces_names, years = years_to_plot, year_labs = year_labs[10:13] )
+plot_provs_alpha = fdata_to_ggplot_df(fdatalist = errors_province_best_isom,names = provinces_names, years = years_to_plot, year_labs = year_labs[11:13] )
 plot_provs_alpha$name = factor(plot_provs_a$name, levels = c(setdiff(plot_provs_a$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
 provinces_data_t = provinces_data %>% filter(CL_ETA == class)
 provinces_data_t = provinces_data_t %>% mutate(weight = num_residenti/sum(provinces_data$num_residenti)) %>% dplyr::select(Provincia, weight)
@@ -139,7 +139,7 @@ v = mean(variance$v)
 
 g = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale  +  ylim(0,0.02) +   geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  +
   geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = meandens, color = Year), color = "black",size = 1.4)+
-  scale_x_datetime(labels = time_format("%b"),limits = lims) + facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) + ggtitle(paste("Mean variance of the curves:",v))
+  scale_x_datetime(labels = time_format("%b"),limits = lims) + facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + font("xy.text",size = 17) #+ ggtitle(paste("Mean variance of the curves:",v))
 #x11()
 pdf(paste0("Output/Plot/",folder_names[[class]],"/Res_regr_Isometric_23.pdf"), width = 20, height = 10)
 
