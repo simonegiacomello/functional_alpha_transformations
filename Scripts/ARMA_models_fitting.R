@@ -259,12 +259,12 @@ stop_idx = max(which(as.Date(original_density$argvals, origin="1970-01-01")<as.D
 stop = original_density$argvals[stop_idx]+1
 
 #from 2022/01/01
-# start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2022-01-01")))-1
-# start = original_density$argvals[start_idx]
+start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2022-01-01")))-1
+start = original_density$argvals[start_idx]
 
 # #from 2011/01/01
-start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2011-01-01")))-1
-start = original_density$argvals[start_idx]
+# start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2011-01-01")))-1
+# start = original_density$argvals[start_idx]
 
 ##conditional density 
 conditional_density = conditioning(original_density, start, stop)
@@ -369,7 +369,16 @@ dev.new(width=12, height=7.5)
 
 
 idx.best = indexes[which.min(indicator)]
-alpha.best = as.numeric(idx.best)
+alpha.best = as.numeric(idx.best) #0.4
+
+##### table for the executive summary 
+alpha.to.plot = c("0","0.35","0.4","0.5","1")
+
+quantiles = data %>% filter(Alpha %in% alpha.to.plot) %>% group_by(Alpha) %>% summarise(q25 = quantile(KLdiv, 0.25),
+                                                                            q50 = quantile(KLdiv, 0.5),
+                                                                            q75 = quantile(KLdiv, 0.75))
+
+
 
 ######
 
@@ -391,7 +400,5 @@ closeAllConnections()
 
 
 
-## 0.4 è l'alpha ottimo per le condizionali 2011-2022 
-## 0.3 è l'alpha ottimo per le condizionali 2023 ma non ci sono evidenti differenze 
 
 

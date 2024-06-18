@@ -234,36 +234,33 @@ load("Output/Data/density_2024.Rdata")
 source("Scripts/Utility_Functions.R")
 
 indexes = paste0(seq(0,1,by=0.05))
-classes = c("0_10","11_14","15_21")
-class = classes[3]  #for simplicity
+class = "15_21"  #for simplicity
 years = paste0("T_", seq(11,24))
-alpha.best = best_model$alpha.best
-idx.best = paste0(alpha.best)
 K = 3
+alpha.best = 0.4
 
-# #from 2024/01/01 to 2024/02/28
-start_idx = min(which(as.Date(original_density[["0"]]$argvals)>as.Date("2024-01-01")))-1
-stop_idx = max(which(as.Date(original_density[["0"]]$argvals)<as.Date("2024-02-29")))
-start = original_density[["0"]]$argvals[start_idx]
+stop_idx = max(which(as.Date(original_density[["0"]]$argvals, origin="1970-01-01")<as.Date("2024-03-01")))
 stop = original_density[["0"]]$argvals[stop_idx]+1
 
-#from 2011/01/01 to 2023/12/31
-# start_idx = min(which(as.Date(original_density[["0"]]$argvals)>as.Date("2011-01-01")))-1
-# stop_idx = max(which(as.Date(original_density[["0"]]$argvals)<as.Date("2023-12-31")))+1
-# start = original_density[["0"]]$argvals[start_idx]
-# stop = original_density[["0"]]$argvals[stop_idx]
+#from 2024/01/01
+start_idx = max(which(as.Date(original_density[["0"]]$argvals, origin="1970-01-01")<as.Date("2024-01-01")))
+start = original_density[["0"]]$argvals[start_idx]
+
 
 ###### performance evaluation
 
 ##MedAPE, KL-divergence and RRSE in L2
 meape = rrse = divergence = list()
 
+#save the forecasting residuals to plot them 
+residuals = list()
+
 for (alpha in c(0, alpha.best)) {
   idx = paste0(alpha)
   
-  ##conditional density 
+  ##conditional density
   conditional_density = conditioning(original_density[[idx]], start, stop)
-  
+
   #total seasonality effect
   seasonality = matrix( rep(seasonality_mean[[idx]][911:(910*2)], 107), ncol = 910, byrow = T)
   
@@ -286,34 +283,24 @@ for (alpha in c(0, alpha.best)) {
     
   }
   
-  ##function in L2 made of original data of predicted 2024 
-  predicted_transformed = original_transformed[[idx]]$data[,1:start_idx]
-  predicted_transformed = cbind(predicted_transformed, preds+seasonality)
-  predicted_transformed = fdata(predicted_transformed,c(original_transformed[[idx]]$argvals , original_transformed[[idx]]$rangeval[2] + 1:763))
-
+  window = 1:length(conditional_density$argvals)
   
-  ##function in L2 made of original data up to 2023 and predicted 2024 
-  # predicted_transformed = original_transformed[[idx]]$data[,(start_idx+1):(stop_idx-1)]
-  # predicted_transformed = cbind(predicted_transformed, preds+seasonality)
-  # predicted_transformed = fdata(predicted_transformed,c(original_transformed[[idx]]$argvals , original_transformed[[idx]]$rangeval[2] + 1:757))
-   
-  ##resulting density
-  predicted_density = alpha.folding(predicted_transformed, alpha)
+  pred = fdata((preds+seasonality)[,window], conditional_density$argvals) #predictions in L2
 
   ##resulting conditional density
-  predicted_conditional_density = conditioning(predicted_density, start, stop)$data
-  predicted_conditional_density = fdata(predicted_conditional_density, conditional_density$argvals)
+  predicted_conditional_density = alpha.folding(pred, alpha)
   
-  true = alpha.tsagris(conditional_density,alpha)$data
-  pred = alpha.tsagris(predicted_conditional_density, alpha)$data
+  true = alpha.tsagris(conditional_density,alpha)
   
+  residuals[[idx]] = true-pred 
+
   meape[[idx]] = rrse[[idx]] = numeric(107)
   
   divergence[[idx]] = int.simpson(predicted_conditional_density * log(predicted_conditional_density/conditional_density))
   
   for (k in 1:107) {
-    meape[[idx]][k] = MAPE(y_pred = pred[k,], y_true = true[k,])
-    rrse[[idx]][k] = RRSE(y_pred = pred[k,], y_true = true[k,])
+    meape[[idx]][k] = MedianAPE(y_pred = pred$data[k,], y_true = true$data[k,])
+    rrse[[idx]][k] = RRSE(y_pred = pred$data[k,], y_true = true$data[k,])
   }
   
   
@@ -321,53 +308,94 @@ for (alpha in c(0, alpha.best)) {
 
 
 
+########### boxplots of predictive performance
 
-plot.data = expand.grid(Alpha = rep(c("0", idx.best), each=107), 
-                        Indicator = c("KL-div","MedAPE","RRSE"),
-                        Value = 0)
-plot.data$Value[1:107] = divergence[["0"]]
-plot.data$Value[108:(107*2)] = divergence[[idx.best]]
+data = expand.grid(Alpha = rep(paste0(c(0,alpha.best)), each=107), 
+                   KLdiv = NA,
+                   MedAPE = NA,
+                   RRSE = NA)
 
-plot.data$Value[(107*2+1):(107*3)] = meape[["0"]]
-plot.data$Value[(107*3+1):(107*4)] = meape[[idx.best]]
+for (idx in paste0(c(0,alpha.best))) {
+  data$KLdiv[data$Alpha == idx] = divergence[[idx]]
+  data$MedAPE[data$Alpha == idx] = meape[[idx]]
+  data$RRSE[data$Alpha == idx] = rrse[[idx]]
+}
 
-plot.data$Value[(107*4+1):(107*5)] = rrse[["0"]]
-plot.data$Value[(107*5+1):(107*6)] = rrse[[idx.best]]
+kl = ggplot(data, aes(x = as.factor(Alpha), y = KLdiv)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightblue") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("KL divergence") + 
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) 
 
+ma = ggplot(data, aes(x = as.factor(Alpha), y = MedAPE)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightgreen") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("MedAPE") + 
+  theme(legend.position = "none" , plot.title = element_text(hjust = 0.5)) +
+  ylim(c(0,5))
 
+rr = ggplot(data, aes(x = as.factor(Alpha), y = RRSE)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="orange") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("RRSE") + 
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) + 
+  ylim(c(0,4)) 
 
-plot1 = ggplot(plot.data[1:(107*2),], aes(x = as.factor(Alpha), y = Value, fill = Indicator)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(yintercept = seq(1.5, length(unique(data$Alpha)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(y = "Value", x = TeX("$\\alpha$"), title = "KL-div for 2024 conditionals") +
-  # labs(y = "Value", x = TeX("$\\alpha$"), title = "KL-div for 2011-2023 conditionals") +
-  theme_minimal() +
-  theme(legend.position = "none" ) 
-
-plot2 = ggplot(plot.data[(107*2+1):(107*4),], aes(x = as.factor(Alpha),y = Value, fill = Indicator)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(yintercept = seq(1.5, length(unique(data$Alpha)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(y = "Value", x = TeX("$\\alpha$"), title = "MedAPE for 2024 conditionals") +
-  # labs(y = "Value", x = TeX("$\\alpha$"), title = "MedAPE for 2011-2023 conditionals") +
-  theme_minimal() +
-  ylim(c(0,3))+
-  theme(legend.position = "none" ) +
-  scale_fill_manual(values = c("MedAPE" = "orange"))
-
-plot3 = ggplot(plot.data[(107*4+1):(107*6),], aes(x = as.factor(Alpha),y = Value, fill = Indicator)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(yintercept = seq(1.5, length(unique(data$Alpha)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  labs(y = "Value", x = TeX("$\\alpha$"), title = "RRSE 2024 conditionals") +
-  #labs(y = "Value", x = TeX("$\\alpha$"), title = "RRSE for 2011-2023 conditionals") +
-  theme_minimal() +
-  theme(legend.position = "none" ) +
-  scale_fill_manual(values = c("RRSE" = "red")) +
-  ylim(c(0,3))
-
-grid.arrange(plot1, plot2, plot3, nrow = 1)
+dev.new(width=12, height=7.5)
+(kl | ma | rr)  #boxplots of the indicators depending on the value of alpha
 
 
+##############  forecasting residuals plots
+
+class = "15_21"
+year = "T_24"
+
+to_ggplot_df_singleyear = function(fdata, year, names, label_year = "2024") {
+  df = data.frame(cbind(names),fdata$data)
+  names(df) = c("name", paste0("val",1:length(fdata$argvals)))
+  df = df %>% pivot_longer(cols = paste0("val",1:length(fdata$argvals)), values_to = "dens", names_to = "dummy") %>% dplyr::select(name,dens) 
+  df$x = rep(fdata$argvals, 107)
+  df$Year = rep(label_year, length(fdata$argvals) * 107)
+  df
+}
+
+#plot for the alpha-Tsagris residuals
+plot_provs_a = to_ggplot_df_singleyear(alpha.folding(residuals[["0.4"]],0.4), year, provinces_names)
+plot_provs_a$name = factor(plot_provs_a$name, levels = c(setdiff(plot_provs_a$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
+mean_provs = plot_provs_a %>% group_by(x, Year) %>% summarise(mdens = mean(dens))
+
+colors = rep("gray",107)
+names(colors) = levels(factor(plot_provs_a$name))
+colScale = scale_colour_manual(name = "name", values = colors)
+lims = range(as.POSIXct( as.Date(plot_provs_a$x,origin = "1970-01-01")))
+
+tsag = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale +  
+  geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + 
+  geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = mdens,color = Year), color = "black",size = 1.4)+
+  #scale_x_datetime(labels = time_format("%b"),limits = lims) + 
+  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + 
+  font("xy.text",size = 17) +
+  ylim(c(0.01, 0.036))
 
 
+#plot for the clr residuals
+plot_provs_a = to_ggplot_df_singleyear(inv_clr(residuals[["0"]]), year, provinces_names)
+plot_provs_a$name = factor(plot_provs_a$name, levels = c(setdiff(plot_provs_a$name, c("Roma", "Milano", "Bergamo","Napoli") ), c("Roma", "Milano", "Bergamo","Napoli")))
+mean_provs = plot_provs_a %>% group_by(x, Year) %>% summarise(mdens = mean(dens))
 
+lims = range(as.POSIXct( as.Date(plot_provs_a$x,origin = "1970-01-01")))
+
+clr = ggplot(plot_provs_a, mapping = aes(x = as.POSIXct( as.Date(x,origin = "1970-01-01")), y = dens, color = name) )+ colScale +  
+  geom_line(aes(alpha  = ifelse(name %in% c("Roma", "Milano", "Bergamo","Napoli"), 1, 1)), size = 1.1 )  + 
+  geom_line(data = mean_provs, mapping=aes(x = as.POSIXct(as.Date(x,origin = "1970-01-01")), y = mdens,color = Year), color = "black",size = 1.4)+
+  #scale_x_datetime(labels = time_format("%b"),limits = lims) + 
+  facet_grid(~Year) + theme_pubr(base_size = 20)  + rremove("legend")+ rremove("xlab") + rremove("ylab")  + labs_pubr(base_size = 20) + 
+  font("xy.text",size = 17) + ylim(c(0.01, 0.036))
+
+dev.new(width=12, height=6)
+(clr + tsag)
+
+
+dev.new(width=6, height=12)
+(clr / tsag)
 
