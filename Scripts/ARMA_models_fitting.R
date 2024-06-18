@@ -255,17 +255,16 @@ class = "15_21"  #for simplicity
 years = paste0("T_", seq(11,23))
 K = 3
 
-#from 2023/01/01 to 2023/12/31
-# start_idx = min(which(as.Date(original_density$argvals)>as.Date("2023-01-01")))-1
-# stop_idx = length(original_density$argvals)
-# start = original_density$argvals[start_idx]
-# stop = original_density$argvals[stop_idx]+1
+stop_idx = max(which(as.Date(original_density$argvals, origin="1970-01-01")<as.Date("2023-01-01")))+1
+stop = original_density$argvals[stop_idx]+1
 
-# #from 2011/01/01 to 2022/12/31
-start_idx = min(which(as.Date(original_density$argvals)>as.Date("2011-01-01")))-1
-stop_idx = max(which(as.Date(original_density$argvals)<as.Date("2023-01-01")))+1
+#from 2022/01/01
+# start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2022-01-01")))-1
+# start = original_density$argvals[start_idx]
+
+# #from 2011/01/01
+start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2011-01-01")))-1
 start = original_density$argvals[start_idx]
-stop = original_density$argvals[stop_idx]
 
 ##conditional density 
 conditional_density = conditioning(original_density, start, stop)
@@ -302,18 +301,13 @@ for (alpha_index in indexes) {
   
   alpha = as.numeric(alpha_index)
   
-  ##function in L2 made of original data of predicted 2023 
-  # predicted_transformed = original_transformed[[alpha_index]]$data[,1:start_idx]
-  # predicted_transformed = cbind(predicted_transformed, preds+seasonality)
-  # predicted_transformed = fdata(predicted_transformed,
-  #                               original_density$argvals[1:ncol(predicted_transformed)])
-  # 
-  ##function in L2 made of original data up to 2022 and predicted 2023 
-  predicted_transformed = original_transformed[[alpha_index]]$data[,(start_idx+1):(stop_idx-1)]
+  ##function in L2 made of original data up to 2022 
+  predicted_transformed = original_transformed[[alpha_index]]$data[,1:(stop_idx-1)]
+  
+  ##add predictions for 2023 and convert to fdata object
   predicted_transformed = cbind(predicted_transformed, preds+seasonality)
-  predicted_transformed = fdata(predicted_transformed,
-                                original_density$argvals[1:ncol(predicted_transformed)])
-   
+  predicted_transformed = fdata(predicted_transformed, original_density$argvals)
+  
   ##resulting density
   predicted_density = alpha.folding(predicted_transformed, alpha)
   
@@ -328,7 +322,7 @@ for (alpha_index in indexes) {
   divergence[[alpha_index]] = int.simpson(predicted_conditional_density * log(predicted_conditional_density/conditional_density))
   
   for (k in 1:107) {
-    meape[[alpha_index]][k] = MAPE(y_pred = pred[k,], y_true = true[k,])
+    meape[[alpha_index]][k] = MedianAPE(y_pred = pred[k,], y_true = true[k,])
     rrse[[alpha_index]][k] = RRSE(y_pred = pred[k,], y_true = true[k,])
   }
   
@@ -337,62 +331,47 @@ for (alpha_index in indexes) {
 
 
 ########### plots
-
 data = expand.grid(Alpha = rep(indexes, each=107), 
-                   Indicator = "KL-divergence",
-                   Value = NA)
+                   KLdiv = NA,
+                   MedAPE = NA,
+                   RRSE = NA)
 
-for (idx in indexes) {data$Value[data$Alpha == idx] = divergence[[idx]]}
+for (idx in indexes) {
+  data$KLdiv[data$Alpha == idx] = divergence[[idx]]
+  data$MedAPE[data$Alpha == idx] = meape[[idx]]
+  data$RRSE[data$Alpha == idx] = rrse[[idx]]
+}
 
-ggplot(data, aes(x = Value, y = as.factor(Alpha), fill = Indicator)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(yintercept = seq(1.5, length(unique(data$Alpha)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  # labs(x = "Value", y = TeX("$\\alpha$"), title = "KL-divergence for the conditional densities in 2023") +
-  labs(x = "Value", y = TeX("$\\alpha$"), title = "KL-divergence for the conditional densities in 2011-2022") +
-  theme_minimal() +
-  theme(legend.position = "none" ) +
-  xlim(c(0,0.0125))+
-  coord_flip()
+kl = ggplot(data, aes(x = as.factor(Alpha), y = KLdiv)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightblue") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("KL divergence") + 
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) +
+  ylim(c(0,0.0125)) #long time span 
+  #ylim(c(0,0.01)) #short time span
+
+ma = ggplot(data, aes(x = as.factor(Alpha), y = MedAPE)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightgreen") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("MedAPE") + 
+  theme(legend.position = "none" , plot.title = element_text(hjust = 0.5)) +
+  ylim(c(0,1.25)) #both time spans
+
+rr = ggplot(data, aes(x = as.factor(Alpha), y = RRSE)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="orange") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("RRSE") + 
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) + 
+  ylim(c(0,1.25)) #both time spans
+
+dev.new(width=12, height=7.5)
+((kl | ma) / rr)  #boxplots of the indicators depending on the value of alpha
 
 
-data = expand.grid(Alpha = rep(indexes, each=107), 
-                   Indicator = "MedAPE",
-                   Value = NA)
-
-for (idx in indexes) {data$Value[data$Alpha == idx] = meape[[idx]]}
-
-ggplot(data, aes(x = Value, y = as.factor(Alpha), fill = Indicator)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(yintercept = seq(1.5, length(unique(data$Alpha)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  # labs(x = "Value", y = TeX("$\\alpha$"), title = "MedAPE for the conditional predictions in 2023") +
-  labs(x = "Value", y = TeX("$\\alpha$"), title = "MedAPE for the conditional predictions in 2011-2022") +
-  theme_minimal() +
-  theme(legend.position = "none" ) +
-  coord_flip() +
-  xlim(c(0.25,3))+
-  scale_fill_manual(values = c("MedAPE" = "orange"))
-
-
-data = expand.grid(Alpha = rep(indexes, each=107), 
-                   Indicator = "RRSE",
-                   Value = NA)
-
-for (idx in indexes) {data$Value[data$Alpha == idx] = rrse[[idx]]}
-
-ggplot(data, aes(x = Value, y = as.factor(Alpha), fill = Indicator)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +  # Align the boxplots
-  #geom_vline(yintercept = seq(1.5, length(unique(data$Alpha)) - 0.5, by = 1), linetype = "dashed", color = "grey") +
-  # labs(x = "Value", y = TeX("$\\alpha$"), title = "RRSE for the conditional predictions in 2023") +
-  labs(x = "Value", y = TeX("$\\alpha$"), title = "RRSE for the conditional predictions in 2011-2022") +
-  theme_minimal() +
-  theme(legend.position = "none" ) +
-  coord_flip() +
-  xlim(c(0,1.25))+
-  scale_fill_manual(values = c("RRSE" = "red"))
-
+idx.best = indexes[which.min(indicator)]
+alpha.best = as.numeric(idx.best)
 
 ######
-idx.best = indexes[which.min(indicator)]
 
 best_model = list(mean = models_mean[[idx.best]],
                   eigen = models_eigen[[idx.best]],
