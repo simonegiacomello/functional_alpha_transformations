@@ -215,7 +215,6 @@ comparison[comparison$Transformation == "CLR",3] = unlist(meape_clr)
 comparison[comparison$Transformation == "$A_{0.85}$",3] = unlist(meape_best)
 comparison[comparison$Transformation == "$A_{1-IT}$",3] = unlist(meape_best_isom)
 
-comparison = comparison %>% filter(Year %in% years_plot_name)
 
 q1 = ggplot(comparison %>% filter(Year == "2016"), aes(MedAPE, colour = Transformation)) +
   geom_density() + 
@@ -249,6 +248,97 @@ dev.new(width=15, height=7)
 kldiv / (medape & theme(legend.position = "bottom", legend.text = element_text(size = 18), legend.title = element_blank()))
 
 
+####### Density comparison plots for KLdiv and MedAPE - SUPPLEMENTARY MATERIAL
+
+constant_density = fdata(rep(1/diff(clist_province[["0"]][["T_11"]]$rangeval), 
+                             length(clist_province[["0"]][["T_11"]]$argvals)),
+                         clist_province[["0"]][["T_11"]]$argvals)
+
+KL_div = function(errors, baseline_density, transformation, alpha = 0) {
+  errors_density = NULL
+  
+  if (transformation == "CLR") errors_density = inv_clr(errors)
+  if (transformation == "Tsagris") errors_density = alpha.folding(errors, alpha)
+  if (transformation == "Isometric") errors_density = alpha.isometric.inv(errors, alpha)
+  
+  return( int.simpson(errors_density * log(errors_density/baseline_density)))
+  
+}
+
+years_plot = c("T_17", "T_19")
+years_plot_name = c("2017", "2019")
+comparison = data.frame(Year = rep(years_plot_name, each = 3*107),
+                        Transformation = rep(c("CLR","$A_{0.85}$","$A_{1-IT}$"), times = 2, each=107),
+                        KLdiv = NA)
+
+for (i in (to_average+2):length(years)) {
+  
+  year = years_names[i]
+  name = years[i]
+  
+  if (name %in% years_plot) {
+    
+    comparison[comparison$Transformation == "CLR" & comparison$Year == year,3] = 
+      KL_div(errors_province_clr[[name]], constant_density, "CLR")
+    
+    comparison[comparison$Transformation == "$A_{0.85}$" & comparison$Year == year,3] =    
+      KL_div(errors_province_best[[name]], constant_density, "Tsagris", alpha.best)
+    
+    comparison[comparison$Transformation == "$A_{1-IT}$" & comparison$Year == year,3] = 
+      KL_div(errors_province_best_isom[[name]], constant_density, "Isometric", alpha.best_isom)
+    
+  }
+}
+
+g1 = ggplot(comparison %>% filter(Year == "2017"), aes(KLdiv, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("KL divergence") + ylab("") + ggtitle("2017") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank()) 
+
+g2 = ggplot(comparison %>% filter(Year == "2019"), aes(KLdiv, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("KL divergence") + ylab("") + ggtitle("2019") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+kldiv = (g1 + g2) + plot_layout(ncol = 2, guides = 'collect') 
+
+
+comparison = data.frame(Year = rep(years_plot_name, each = 3*107),
+                        Transformation = rep(c("CLR","$A_{0.85}$","$A_{1-IT}$"), times = 2, each=107),
+                        MedAPE = NA)
+
+comparison[comparison$Transformation == "CLR",3] = c(meape_clr$T_17, meape_clr$T_19)
+comparison[comparison$Transformation == "$A_{0.85}$",3] = c(meape_best$T_17, meape_best$T_19)
+comparison[comparison$Transformation == "$A_{1-IT}$",3] = c(meape_best_isom$T_17, meape_best_isom$T_19)
+
+
+q1 = ggplot(comparison %>% filter(Year == "2017"), aes(MedAPE, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("MedAPE") + ylab("") + ggtitle("2017") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+q2 = ggplot(comparison %>% filter(Year == "2019"), aes(MedAPE, colour = Transformation)) +
+  geom_density() + 
+  scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
+                      labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
+  xlab("MedAPE") + ylab("") + ggtitle("2019") +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y = element_blank())
+
+
+medape = (q1 + q2) + plot_layout(ncol = 2, guides = 'collect') 
+
+dev.new(width=15, height=7)
+kldiv / (medape & theme(legend.position = "bottom", legend.text = element_text(size = 18), legend.title = element_blank()))
 
 
 
