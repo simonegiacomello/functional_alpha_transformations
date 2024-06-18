@@ -262,10 +262,6 @@ stop = original_density$argvals[stop_idx]+1
 start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2022-01-01")))-1
 start = original_density$argvals[start_idx]
 
-# #from 2011/01/01
-# start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2011-01-01")))-1
-# start = original_density$argvals[start_idx]
-
 ##conditional density 
 conditional_density = conditioning(original_density, start, stop)
 
@@ -347,8 +343,7 @@ kl = ggplot(data, aes(x = as.factor(Alpha), y = KLdiv)) +
   labs(y = "", x = TeX("$\\alpha$")) +
   theme_minimal() + ggtitle("KL divergence") + 
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) +
-  ylim(c(0,0.0125)) #long time span 
-  #ylim(c(0,0.01)) #short time span
+  ylim(c(0,0.01)) #short time span
 
 ma = ggplot(data, aes(x = as.factor(Alpha), y = MedAPE)) +
   geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightgreen") +  
@@ -377,6 +372,123 @@ alpha.to.plot = c("0","0.35","0.4","0.5","1")
 quantiles = data %>% filter(Alpha %in% alpha.to.plot) %>% group_by(Alpha) %>% summarise(q25 = quantile(KLdiv, 0.25),
                                                                             q50 = quantile(KLdiv, 0.5),
                                                                             q75 = quantile(KLdiv, 0.75))
+
+
+
+
+
+
+
+###### plots for SUPPLEMENTARY MATERIAL 
+
+#from 2011/01/01
+start_idx = min(which(as.Date(original_density$argvals, origin="1970-01-01")>as.Date("2011-01-01")))-1
+start = original_density$argvals[start_idx]
+
+##conditional density 
+conditional_density = conditioning(original_density, start, stop)
+
+##MedAPE, KL-divergence and RRSE in L2
+meape = rrse = divergence = list()
+
+##mean of KL-divergence for the selection of the best alpha
+indicator = list()
+
+for (alpha_index in indexes) {
+  
+  #total seasonality effect
+  seasonality = matrix( rep(seasonality_mean[[alpha_index]][768:(767*2)], 107), ncol = 767, byrow = T)
+  
+  #compute predictions in each province 
+  preds = matrix(NA, 107, 767)
+  scores = time_series_PC[[alpha_index]]$x[,1:K]
+  
+  for (i in 1:107) {
+    
+    preds[i,] = predict(models_mean[[alpha_index]], n.ahead = 767, se.fit=F)
+    
+    for (j in 1:K) {
+      
+      preds[i,] = preds[i,] + scores[i,j] *
+        predict(models_eigen[[alpha_index]][[j]], n.ahead=767, se.fit=F)
+      
+      seasonality[i,] = seasonality[i,] + scores[i,j] * seasonality_eigen[[alpha_index]][[j]][768:(767*2)]
+      
+    }
+    
+  }
+  
+  alpha = as.numeric(alpha_index)
+  
+  ##function in L2 made of original data up to 2022 
+  predicted_transformed = original_transformed[[alpha_index]]$data[,1:(stop_idx-1)]
+  
+  ##add predictions for 2023 and convert to fdata object
+  predicted_transformed = cbind(predicted_transformed, preds+seasonality)
+  predicted_transformed = fdata(predicted_transformed, original_density$argvals)
+  
+  ##resulting density
+  predicted_density = alpha.folding(predicted_transformed, alpha)
+  
+  ##resulting conditional density
+  predicted_conditional_density = conditioning(predicted_density, start, stop)
+  
+  true = alpha.tsagris(conditional_density,alpha)$data
+  pred = alpha.tsagris(predicted_conditional_density, alpha)$data
+  
+  meape[[alpha_index]] = rrse[[alpha_index]] = numeric(107)
+  
+  divergence[[alpha_index]] = int.simpson(predicted_conditional_density * log(predicted_conditional_density/conditional_density))
+  
+  for (k in 1:107) {
+    meape[[alpha_index]][k] = MedianAPE(y_pred = pred[k,], y_true = true[k,])
+    rrse[[alpha_index]][k] = RRSE(y_pred = pred[k,], y_true = true[k,])
+  }
+  
+  indicator[[alpha_index]] = mean(divergence[[alpha_index]])
+}
+
+
+data = expand.grid(Alpha = rep(indexes, each=107), 
+                   KLdiv = NA,
+                   MedAPE = NA,
+                   RRSE = NA)
+
+for (idx in indexes) {
+  data$KLdiv[data$Alpha == idx] = divergence[[idx]]
+  data$MedAPE[data$Alpha == idx] = meape[[idx]]
+  data$RRSE[data$Alpha == idx] = rrse[[idx]]
+}
+
+kl = ggplot(data, aes(x = as.factor(Alpha), y = KLdiv)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightblue") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("KL divergence") + 
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) +
+  ylim(c(0,0.0125)) #long time span 
+
+ma = ggplot(data, aes(x = as.factor(Alpha), y = MedAPE)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="lightgreen") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("MedAPE") + 
+  theme(legend.position = "none" , plot.title = element_text(hjust = 0.5)) +
+  ylim(c(0,1.25)) #both time spans
+
+rr = ggplot(data, aes(x = as.factor(Alpha), y = RRSE)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape =NA, fill="orange") +  
+  labs(y = "", x = TeX("$\\alpha$")) +
+  theme_minimal() + ggtitle("RRSE") + 
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) + 
+  ylim(c(0,1.25)) #both time spans
+
+dev.new(width=12, height=7.5)
+((kl | ma) / rr)  #boxplots of the indicators depending on the value of alpha
+
+
+
+
+
+
 
 
 
