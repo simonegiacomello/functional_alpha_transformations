@@ -260,3 +260,7 @@ ggplot(temp, aes(x = as.factor(Year), y = Value, fill = Transformation)) +
   scale_fill_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                     labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$")))
 
+
+
+
+
