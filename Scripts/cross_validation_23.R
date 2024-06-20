@@ -238,6 +238,13 @@ idx.best_isom = names(kl_div)[which.min(kl_div)] #1
 
 ############################  comparison between CLR, Tsagris and Isometric
 
+rm(list=ls())
+load("Output/Data/Indicators_cv_Isometric_23.Rdata")
+load("Output/Data/Indicators_cv_Tsagris_23.Rdata")
+
+idx.best = "0.85"
+idx.best_isom = "1"
+
 comparison = rbind(indicators_data[["0"]], indicators_data[[idx.best]], indicators_data_isom[[idx.best_isom]])
 comparison$Alpha = c(rep(0,120),rep(as.numeric(idx.best),120),rep(as.numeric(idx.best_isom),120))
 comparison$Transformation = c(rep("CLR",120), rep("Tsagris",120), rep("Isometric",120) )
@@ -282,4 +289,5 @@ ggplot(temp, aes(x = as.factor(Year), y = Value, fill = Transformation)) +
   scale_fill_manual(values = c("CLR" = "skyblue", "Tsagris" = "orange", "Isometric" = "red"))
 
 
+table = temp %>% group_by(Alpha, Year) %>% summarise(mean = mean(Value))              ##### table for Executive Summary
 
