@@ -359,9 +359,12 @@ rr = ggplot(data, aes(x = as.factor(Alpha), y = RRSE)) +
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) + 
   ylim(c(0,1.25)) #both time spans
 
-dev.new(width=12, height=7.5)
-((kl | ma) / rr)  #boxplots of the indicators depending on the value of alpha
 
+dev.new(width=12, height=4)
+(kl + ma)
+
+dev.new(width=6, height=4)
+rr
 
 idx.best = indexes[which.min(indicator)]
 alpha.best = as.numeric(idx.best) #0.4
@@ -372,8 +375,6 @@ alpha.to.plot = c("0","0.35","0.4","0.5","1")
 quantiles = data %>% filter(Alpha %in% alpha.to.plot) %>% group_by(Alpha) %>% summarise(q25 = quantile(KLdiv, 0.25),
                                                                             q50 = quantile(KLdiv, 0.5),
                                                                             q75 = quantile(KLdiv, 0.75))
-
-
 
 
 
@@ -481,12 +482,11 @@ rr = ggplot(data, aes(x = as.factor(Alpha), y = RRSE)) +
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5) ) + 
   ylim(c(0,1.25)) #both time spans
 
-dev.new(width=12, height=7.5)
-((kl | ma) / rr)  #boxplots of the indicators depending on the value of alpha
+dev.new(width=12, height=4)
+(kl | ma) #boxplots of the indicators depending on the value of alpha
 
-
-
-
+dev.new(width=6, height=4)
+rr
 
 
 

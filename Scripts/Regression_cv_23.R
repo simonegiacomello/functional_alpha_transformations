@@ -227,7 +227,7 @@ q1 = ggplot(comparison %>% filter(Year == "2023"), aes(MedAPE, colour = Transfor
 
 
 dev.new(width=15, height=7)
-g1 / (q1 & theme(legend.position = "bottom", legend.text = element_text(size = 18), legend.title = element_blank()))
+(g1 + q1) + plot_layout(guides = "collect") & theme(legend.position = "bottom", legend.text = element_text(size = 18), legend.title = element_blank())
 
 
 
@@ -270,7 +270,7 @@ for (i in 1:2) {
 }
 
 g1 = ggplot(comparison %>% filter(Year == "2021"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0, 0.1524))+ 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2021") +
@@ -278,7 +278,7 @@ g1 = ggplot(comparison %>% filter(Year == "2021"), aes(KLdiv, colour = Transform
   theme(axis.text.y = element_blank()) 
 
 g2 = ggplot(comparison %>% filter(Year == "2022"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0, 0.1524))+ 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2022") +
@@ -298,7 +298,7 @@ comparison[comparison$Transformation == "$A_{0.85}$",3] = c(meape_best[["T_21"]]
 comparison[comparison$Transformation == "$A_{1-IT}$",3] = c(meape_best_isom[["T_21"]], meape_best_isom[["T_22"]])
 
 q1 = ggplot(comparison %>% filter(Year == "2021"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0.32, 8.66)) +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2021") +
@@ -306,7 +306,7 @@ q1 = ggplot(comparison %>% filter(Year == "2021"), aes(MedAPE, colour = Transfor
   theme(axis.text.y = element_blank()) 
 
 q2 = ggplot(comparison %>% filter(Year == "2022"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0.32, 8.66)) +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2022") +

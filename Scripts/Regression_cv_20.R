@@ -179,7 +179,7 @@ for (i in (to_average+2):length(years)) {
 }
 
 g1 = ggplot(comparison %>% filter(Year == "2016"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0, 0.062)) +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                     labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2016") +
@@ -187,7 +187,7 @@ g1 = ggplot(comparison %>% filter(Year == "2016"), aes(KLdiv, colour = Transform
   theme(axis.text.y = element_blank()) 
   
 g2 = ggplot(comparison %>% filter(Year == "2018"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0, 0.062)) +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2018") +
@@ -195,7 +195,7 @@ g2 = ggplot(comparison %>% filter(Year == "2018"), aes(KLdiv, colour = Transform
   theme(axis.text.y = element_blank())
 
 g3 = ggplot(comparison %>% filter(Year == "2020"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density()  +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2020") +
@@ -215,9 +215,8 @@ comparison[comparison$Transformation == "CLR",3] = unlist(meape_clr)
 comparison[comparison$Transformation == "$A_{0.85}$",3] = unlist(meape_best)
 comparison[comparison$Transformation == "$A_{1-IT}$",3] = unlist(meape_best_isom)
 
-
 q1 = ggplot(comparison %>% filter(Year == "2016"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0.18, 3.8)) + 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2016") +
@@ -225,7 +224,7 @@ q1 = ggplot(comparison %>% filter(Year == "2016"), aes(MedAPE, colour = Transfor
   theme(axis.text.y = element_blank())
 
 q2 = ggplot(comparison %>% filter(Year == "2018"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() +  xlim(c(0.18, 3.8)) + 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2018") +
@@ -234,7 +233,7 @@ q2 = ggplot(comparison %>% filter(Year == "2018"), aes(MedAPE, colour = Transfor
 
 
 q3 = ggplot(comparison %>% filter(Year == "2020"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() +  xlim(c(0.18, 3.8)) + 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2020") +
@@ -291,7 +290,7 @@ for (i in (to_average+2):length(years)) {
 }
 
 g1 = ggplot(comparison %>% filter(Year == "2017"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0, 0.042)) +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2017") +
@@ -299,7 +298,7 @@ g1 = ggplot(comparison %>% filter(Year == "2017"), aes(KLdiv, colour = Transform
   theme(axis.text.y = element_blank()) 
 
 g2 = ggplot(comparison %>% filter(Year == "2019"), aes(KLdiv, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0, 0.042)) +
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("KL divergence") + ylab("") + ggtitle("2019") +
@@ -319,7 +318,7 @@ comparison[comparison$Transformation == "$A_{1-IT}$",3] = c(meape_best_isom$T_17
 
 
 q1 = ggplot(comparison %>% filter(Year == "2017"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0.1835, 2.2442)) + 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2017") +
@@ -327,7 +326,7 @@ q1 = ggplot(comparison %>% filter(Year == "2017"), aes(MedAPE, colour = Transfor
   theme(axis.text.y = element_blank())
 
 q2 = ggplot(comparison %>% filter(Year == "2019"), aes(MedAPE, colour = Transformation)) +
-  geom_density() + 
+  geom_density() + xlim(c(0.183, 2.2442)) + 
   scale_colour_manual(values = c("CLR" = "skyblue", "$A_{0.85}$" = "orange", "$A_{1-IT}$" = "red"),
                       labels = c("CLR" = TeX("CLR"), "$A_{0.85}$" = TeX("$A_{0.85}$"), "$A_{1-IT}$" = TeX("$A_{1-IT}$"))) +
   xlab("MedAPE") + ylab("") + ggtitle("2019") +
