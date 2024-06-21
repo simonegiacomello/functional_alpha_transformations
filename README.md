@@ -1,12 +1,13 @@
 # Functional $\alpha$-transformations for the statistical analysis of density functions
 
 ## Abstract
-The well established Aitchison geometry and the log-ratio approach are considered to be the baseline theory to deal with Compositional Data. 
-Recent advances led to the introduction of the $\alpha$-transformations, a family of Box-Cox like transformations that range from the log-ratio to a simple Euclidean transformation, based on the parameter $\alpha$. 
-The main strengths of this family when compared with the log-ratio approach, are firstly to allow to select the degree of data modification based on the problem at hand, and to be able to deal with zeros in the composition. 
-The log-ratio approach has been extended to the functional case, in which compositions with infinitely-many parts become probability density functions. Similarly to the multivariate case, the constraints presented by density functions prevent the classical Functional Data Analysis techniques to work properly.
-The Bayes space has been introduced as the extension of the Aitchison simplex in order to embed densities in a suitable geometry.
-The primary goal of this work is to introduce the functional version of the $\alpha$-transformations as a generalization of the theory develeped in the multivariate framework. A case study is presented in order to test the transformations against the log-ratio approach both in functional regression and in time-series forecasting.
+The nature of probability density functions can cause problems when the classical methods of Functional Data Analysis are adopted, since square-integrability may fail and the constraints may not be taken into consideration. 
+In that sense, the compositional log-ratio approach and multivariate Aitchison geometry have been generalized to the functional case with the definition of the Bayes space, that embeds densities in a suitable geometry.
+The goal of this work is to study the possibility of generalizing the multivariate $\alpha$-transformations to the functional case. 
+The $\alpha$-transformations have been recently introduced as an alternative to the log-ratio approach in Compositional Data Analysis, and their main strengths are to include zeros in compositions and to control the degree of data modification through the parameter $\alpha$. 
+$\alpha$-transformations allow the classical Functional Data Analysis methods to work on densities by transforming them into square-integrable functions and selecting the parameter in order to optimize a performance metric depending on the problem at hand. 
+Moreover, the log-ratio transformation can be retrieved as a limit case of the $\alpha$-transformation, hence the parameter selection process includes it as well.
+A real case study is presented to test the functioning of the procedure in a regression and time-series modelling scenario, together with the comparison with the log-ratio approach.
 
 ## Author
 Simone Giacomello      simone.giacomello@mail.polimi.it
@@ -19,10 +20,6 @@ Advisor: Prof.ssa Alessandra Menafoglio
 In this repository you can find the R scripts that produced the analysis. The complete set of data can be found at https://polimi365-my.sharepoint.com/:f:/g/personal/10620752_polimi_it/ElGqmXWeVb9Eml8nekSPr1oBLD-81l-YEt4uDgvcbqCWcQ?e=mEUXGi
 
 ## References
-Riccardo Scimone, Alessandra Menafoglio, Laura M. Sangalli, and Piercesare Secchi. A look at the spatio-
-temporal mortality patterns in italy during the covid-19 pandemic through the lens of mortality densities.
-Spatial Statistics, 49:100541, 2022. ISSN 2211-6753. doi: https://doi.org/10.1016/j.spasta.2021.100541.
-URL https://www.sciencedirect.com/science/article/pii/S2211675321000518. Spatio-temporal
-spread of Covid patterns: its spread, causes and scale
+Scimone R, Menafoglio A, Sangalli LM, Secchi P. A look at the spatio-temporal mortality patterns in Italy during the COVID-19 pandemic through the lens of mortality densities. Spat Stat. 2022 Jun;49:100541. doi: 10.1016/j.spasta.2021.100541. Epub 2021 Sep 28. PMID: 34631399; PMCID: PMC8486968.
 
 The original study code can be found at https://github.com/RiccardoScimone/Mortality-densities-italy-analysis
